@@ -11,15 +11,9 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
 
-    stages {
 
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
 
-        stage('Verify Environment') {
+onment') {
             steps {
                 sh 'java -version'
                 sh 'mvn -version'
@@ -91,6 +85,7 @@ pipeline {
     post {
         success {
 
-                    echo "Application is healthy!"
-                '''
+                    echo "Application 
+
+		    
 
