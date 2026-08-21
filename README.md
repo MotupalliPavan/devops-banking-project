@@ -258,8 +258,3 @@ docker-compose down -v
 ## License
 
 This project is for educational purposes.
-
-## Author
-
-**Satish Das**
-- GitHub: [@Satish-Das](https://github.com/Satish-Das)
