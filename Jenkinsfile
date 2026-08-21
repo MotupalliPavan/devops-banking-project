@@ -1,19 +1,20 @@
 pipeline {
     agent any
 
-    environment {
-        APP_NAME = "devops-banking-project-app"
-        COMPOSE_FILE = "docker-compose.yml"
-    }
-
     options {
         timestamps()
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
 
+    stages {
 
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
 
-onment') {
+        stage('Verify Environment') {
             steps {
                 sh 'java -version'
                 sh 'mvn -version'
@@ -66,12 +67,20 @@ onment') {
                 sh '''
                     echo "Waiting for application..."
                     sleep 10
-
+                    curl --fail --silent --show-error http://localhost:8081/login > /dev/null
+                    echo "Application is healthy!"
+                '''
             }
         }
     }
+
+    post {
+        success {
             echo 'Banking application deployed successfully!'
         }
+
+        failure {
+            echo 'Pipeline failed. Check the stage logs.'
         }
 
         always {
@@ -79,13 +88,3 @@ onment') {
         }
     }
 }
-        failure {
-            echo 'Pipeline failed. Check the stage logs.'
-
-    post {
-        success {
-
-                    echo "Application 
-
-		    
-
