@@ -1,10 +1,7 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: digital-banking-db
     environment:
       - POSTGRES_DB=digitalbank
       - POSTGRES_USER=postgres
@@ -22,7 +19,6 @@ services:
   # Spring Boot Application
   app:
     build: .
-    container_name: digital-banking-app
     ports:
       - "8081:8080"
     environment:
