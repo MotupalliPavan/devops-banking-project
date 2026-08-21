@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main :: html(content=~{::main}, pageTitle='Create Account')}">
+<head>
+    <title>Create Account</title>
+</head>
+<body>
+<main>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a th:href="@{/accounts}">Accounts</a></li>
+            <li class="breadcrumb-item active">Create New Account</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-plus-square me-2"></i>Create New Account</h5>
+                </div>
+                <div class="card-body">
+                    <form th:action="@{/accounts/create}" method="post">
+                        <div class="mb-3">
+                            <label for="accountType" class="form-label">Account Type</label>
+                            <select class="form-select" id="accountType" name="accountType" required>
+                                <option value="">Select account type...</option>
+                                <option th:each="type : ${accountTypes}" th:value="${type}" th:text="${type}">Type</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="initialDeposit" class="form-label">Initial Deposit (Optional)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="initialDeposit" name="initialDeposit"
+                                       step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="form-text">Leave empty or enter 0 to start with zero balance.</div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Savings Account:</strong> Ideal for long-term savings with interest benefits.<br>
+                            <strong>Current Account:</strong> Perfect for daily transactions and business use.
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check-lg me-1"></i> Create Account
+                            </button>
+                            <a th:href="@{/accounts}" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+</body>
+</html>

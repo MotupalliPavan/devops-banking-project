@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main :: html(content=~{::main}, pageTitle='Deposit')}">
+<head>
+    <title>Deposit</title>
+</head>
+<body>
+<main>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a th:href="@{/transactions}">Transactions</a></li>
+            <li class="breadcrumb-item active">Deposit</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Deposit Money</h5>
+                </div>
+                <div class="card-body">
+                    <form id="depositForm" th:action="@{/transactions/deposit}" method="post" novalidate>
+                        <div class="mb-3">
+                            <label for="accountNumber" class="form-label">To Account <span class="text-danger">*</span></label>
+                            <select class="form-select" id="accountNumber" name="accountNumber" required>
+                                <option value="">Select account...</option>
+                                <option th:each="account : ${accounts}"
+                                        th:value="${account.accountNumber}"
+                                        th:data-balance="${account.balance}"
+                                        th:text="${account.accountNumber} + ' - ' + ${account.accountType} + ' (₹' + ${#numbers.formatDecimal(account.balance, 1, 2)} + ')'">
+                                    Account
+                                </option>
+                            </select>
+                            <div class="invalid-feedback">Please select an account.</div>
+                        </div>
+
+                        <!-- Current Balance Display -->
+                        <div id="balanceInfo" class="alert alert-info py-2 d-none">
+                            <small><i class="bi bi-wallet2 me-1"></i>Current Balance: <strong id="currentBalance">₹0.00</strong></small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">Amount <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" class="form-control" id="amount" name="amount"
+                                       step="0.01" min="0.01" max="1000000" placeholder="0.00" required>
+                                <div class="invalid-feedback" id="amountError">Please enter a valid amount.</div>
+                            </div>
+                            <small class="text-muted">Minimum: ₹0.01 | Maximum: ₹1,000,000</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <input type="text" class="form-control" id="description" name="description"
+                                   placeholder="e.g., Cash deposit" maxlength="500">
+                            <small class="text-muted">Optional - Max 500 characters</small>
+                        </div>
+
+                        <!-- Deposit Summary -->
+                        <div id="depositSummary" class="card bg-light mb-3 d-none">
+                            <div class="card-body py-2">
+                                <h6 class="card-title mb-2"><i class="bi bi-receipt me-1"></i>Deposit Summary</h6>
+                                <div class="row small">
+                                    <div class="col-6">Deposit Amount:</div>
+                                    <div class="col-6 text-end text-success"><strong id="summaryAmount">+₹0.00</strong></div>
+                                    <div class="col-6">New Balance:</div>
+                                    <div class="col-6 text-end"><strong id="summaryNewBalance">₹0.00</strong></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg" id="submitBtn">
+                                <span id="submitText"><i class="bi bi-plus-circle me-1"></i> Deposit</span>
+                                <span id="submitSpinner" class="spinner-border spinner-border-sm ms-1 d-none" role="status"></span>
+                            </button>
+                            <a th:href="@{/transactions}" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('depositForm');
+            const accountSelect = document.getElementById('accountNumber');
+            const amountInput = document.getElementById('amount');
+            const balanceInfo = document.getElementById('balanceInfo');
+            const currentBalanceEl = document.getElementById('currentBalance');
+            const depositSummary = document.getElementById('depositSummary');
+            const summaryAmount = document.getElementById('summaryAmount');
+            const summaryNewBalance = document.getElementById('summaryNewBalance');
+            const submitBtn = document.getElementById('submitBtn');
+            const submitText = document.getElementById('submitText');
+            const submitSpinner = document.getElementById('submitSpinner');
+
+            let currentBalance = 0;
+
+            // Show balance when account is selected
+            accountSelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                if (selectedOption.value) {
+                    currentBalance = parseFloat(selectedOption.getAttribute('data-balance')) || 0;
+                    currentBalanceEl.textContent = '₹' + currentBalance.toFixed(2);
+                    balanceInfo.classList.remove('d-none');
+                    this.classList.remove('is-invalid');
+                    this.classList.add('is-valid');
+                    updateSummary();
+                } else {
+                    balanceInfo.classList.add('d-none');
+                    depositSummary.classList.add('d-none');
+                    this.classList.remove('is-valid');
+                }
+            });
+
+            // Validate amount
+            amountInput.addEventListener('input', function() {
+                const amount = parseFloat(this.value) || 0;
+                const amountError = document.getElementById('amountError');
+
+                if (amount <= 0) {
+                    amountError.textContent = 'Amount must be greater than ₹0.';
+                    this.classList.add('is-invalid');
+                    this.classList.remove('is-valid');
+                } else if (amount > 1000000) {
+                    amountError.textContent = 'Amount cannot exceed ₹1,000,000 per transaction.';
+                    this.classList.add('is-invalid');
+                    this.classList.remove('is-valid');
+                } else {
+                    this.classList.remove('is-invalid');
+                    this.classList.add('is-valid');
+                }
+                updateSummary();
+            });
+
+            amountInput.addEventListener('blur', function() {
+                if (this.value) {
+                    this.value = parseFloat(this.value).toFixed(2);
+                }
+            });
+
+            // Update deposit summary
+            function updateSummary() {
+                const amount = parseFloat(amountInput.value) || 0;
+
+                if (accountSelect.value && amount > 0 && amount <= 1000000) {
+                    summaryAmount.textContent = '+₹' + amount.toFixed(2);
+                    summaryNewBalance.textContent = '₹' + (currentBalance + amount).toFixed(2);
+                    depositSummary.classList.remove('d-none');
+                } else {
+                    depositSummary.classList.add('d-none');
+                }
+            }
+
+            // Form validation on submit
+            form.addEventListener('submit', function(e) {
+                let isValid = true;
+
+                // Validate account selection
+                if (!accountSelect.value) {
+                    accountSelect.classList.add('is-invalid');
+                    isValid = false;
+                }
+
+                // Validate amount
+                const amount = parseFloat(amountInput.value) || 0;
+                if (amount <= 0 || amount > 1000000) {
+                    amountInput.classList.add('is-invalid');
+                    isValid = false;
+                }
+
+                if (!isValid) {
+                    e.preventDefault();
+                    const firstError = document.querySelector('.is-invalid');
+                    if (firstError) {
+                        firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        firstError.focus();
+                    }
+                    return;
+                }
+
+                // Show loading state
+                submitBtn.disabled = true;
+                submitText.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Processing...';
+                submitSpinner.classList.remove('d-none');
+            });
+        });
+    </script>
+</main>
+</body>
+</html>

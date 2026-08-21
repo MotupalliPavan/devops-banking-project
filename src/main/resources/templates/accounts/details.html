@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main :: html(content=~{::main}, pageTitle='Account Details')}">
+<head>
+    <title>Account Details</title>
+</head>
+<body>
+<main>
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a th:href="@{/accounts}">Accounts</a></li>
+            <li class="breadcrumb-item active" th:text="${account.accountNumber}">Account</li>
+        </ol>
+    </nav>
+
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Account Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted">Account Number</label>
+                            <p class="font-monospace h5" th:text="${account.accountNumber}">1234567890</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted">Account Type</label>
+                            <p class="h5" th:text="${account.accountType}">SAVINGS</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted">Current Balance</label>
+                            <p class="h3 text-primary" th:text="'₹' + ${#numbers.formatDecimal(account.balance, 1, 2)}">₹0.00</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted">Status</label>
+                            <p>
+                                <span th:text="${account.status}" class="badge"
+                                      th:classappend="${account.status.name() == 'ACTIVE'} ? 'bg-success' : 'bg-danger'">
+                                    Status
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted">Created On</label>
+                            <p th:text="${#temporals.format(account.createdAt, 'MMMM dd, yyyy')}">January 01, 2025</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body d-grid gap-2">
+                    <a th:href="@{/transactions/deposit(account=${account.accountNumber})}" class="btn btn-success">
+                        <i class="bi bi-plus-circle me-1"></i> Deposit
+                    </a>
+                    <a th:href="@{/transactions/withdraw(account=${account.accountNumber})}" class="btn btn-warning">
+                        <i class="bi bi-dash-circle me-1"></i> Withdraw
+                    </a>
+                    <a th:href="@{/transactions/transfer(from=${account.accountNumber})}" class="btn btn-primary">
+                        <i class="bi bi-arrow-left-right me-1"></i> Transfer
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Transaction History</h5>
+        </div>
+        <div class="card-body">
+            <div th:if="${transactions.isEmpty()}" class="text-center py-4">
+                <i class="bi bi-clock-history text-muted" style="font-size: 3rem;"></i>
+                <p class="mt-2 text-muted">No transactions yet for this account.</p>
+            </div>
+
+            <div class="table-responsive" th:unless="${transactions.isEmpty()}">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Reference</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th class="text-end">Amount</th>
+                            <th class="text-end">Balance After</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="txn : ${transactions.content}">
+                            <td th:text="${#temporals.format(txn.createdAt, 'MMM dd, yyyy HH:mm')}">Date</td>
+                            <td class="font-monospace" th:text="${txn.referenceId}">Reference</td>
+                            <td>
+                                <span th:text="${txn.type}" class="badge"
+                                      th:classappend="${txn.type.name() == 'DEPOSIT'} ? 'bg-success' : (${txn.type.name() == 'WITHDRAWAL'} ? 'bg-danger' : 'bg-info')">
+                                    Type
+                                </span>
+                            </td>
+                            <td th:text="${txn.description}">Description</td>
+                            <td class="text-end"
+                                th:classappend="${txn.type.name() == 'DEPOSIT' || (txn.type.name() == 'TRANSFER' && txn.toAccountNumber == account.accountNumber)} ? 'text-success' : 'text-danger'"
+                                th:text="(${txn.type.name() == 'DEPOSIT' || (txn.type.name() == 'TRANSFER' && txn.toAccountNumber == account.accountNumber)} ? '+₹' : '-₹') + ${#numbers.formatDecimal(txn.amount, 1, 2)}">
+                                Amount
+                            </td>
+                            <td class="text-end" th:text="${txn.balanceAfter != null} ? '₹' + ${#numbers.formatDecimal(txn.balanceAfter, 1, 2)} : '-'">Balance</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <nav th:if="${transactions.totalPages > 1}" aria-label="Transaction pages">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item" th:classappend="${transactions.first} ? 'disabled'">
+                        <a class="page-link" th:href="@{/accounts/{num}(num=${account.accountNumber}, page=${transactions.number - 1})}">Previous</a>
+                    </li>
+                    <li th:each="i : ${#numbers.sequence(0, transactions.totalPages - 1)}"
+                        class="page-item" th:classappend="${i == transactions.number} ? 'active'">
+                        <a class="page-link" th:href="@{/accounts/{num}(num=${account.accountNumber}, page=${i})}" th:text="${i + 1}">1</a>
+                    </li>
+                    <li class="page-item" th:classappend="${transactions.last} ? 'disabled'">
+                        <a class="page-link" th:href="@{/accounts/{num}(num=${account.accountNumber}, page=${transactions.number + 1})}">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</main>
+</body>
+</html>

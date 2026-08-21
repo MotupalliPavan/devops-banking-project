@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main :: html(content=~{::main}, pageTitle='My Profile')}">
+<head>
+    <title>My Profile</title>
+</head>
+<body>
+<main>
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+        <h1 class="h2"><i class="bi bi-person-circle me-2"></i>My Profile</h1>
+    </div>
+
+    <div class="row">
+        <!-- Personal Information -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-person me-2"></i>Personal Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="text-muted small">Full Name</label>
+                        <p class="h5 mb-0" th:text="${user.firstName} + ' ' + ${user.lastName}">John Doe</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted small">Email Address</label>
+                        <p class="mb-0">
+                            <i class="bi bi-envelope me-1 text-muted"></i>
+                            <span th:text="${user.email}">user@example.com</span>
+                        </p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted small">Phone Number</label>
+                        <p class="mb-0">
+                            <i class="bi bi-telephone me-1 text-muted"></i>
+                            <span th:text="${user.phone ?: 'Not provided'}">+91 9876543210</span>
+                        </p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-muted small">Account Status</label>
+                        <p class="mb-0">
+                            <span th:text="${user.status}" class="badge"
+                                  th:classappend="${user.status.name() == 'ACTIVE'} ? 'bg-success' : 'bg-danger'">
+                                Active
+                            </span>
+                        </p>
+                    </div>
+                    <div>
+                        <label class="text-muted small">Member Since</label>
+                        <p class="mb-0" th:text="${#temporals.format(user.createdAt, 'MMMM dd, yyyy')}">January 01, 2025</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Summary -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-wallet2 me-2"></i>Account Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div th:if="${#lists.isEmpty(accounts)}" class="text-center py-4">
+                        <i class="bi bi-exclamation-circle text-warning" style="font-size: 2rem;"></i>
+                        <p class="mt-2 text-muted">No accounts found</p>
+                    </div>
+
+                    <div th:unless="${#lists.isEmpty(accounts)}" th:each="account : ${accounts}" class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded">
+                            <div>
+                                <p class="mb-0 font-monospace" th:text="${account.accountNumber}">1234567890</p>
+                                <small class="text-muted" th:text="${account.accountType}">SAVINGS</small>
+                            </div>
+                            <div class="text-end">
+                                <p class="mb-0 h5 text-primary" th:text="'₹' + ${#numbers.formatDecimal(account.balance, 1, 2)}">₹0.00</p>
+                                <span th:text="${account.status}" class="badge"
+                                      th:classappend="${account.status.name() == 'ACTIVE'} ? 'bg-success' : 'bg-danger'">
+                                    Active
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <a th:href="@{/accounts}" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-eye me-1"></i> View Account Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-shield-lock me-2"></i>Security</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Password</h6>
+                            <p class="text-muted small">Keep your account secure with a strong password</p>
+                            <a th:href="@{/profile/change-password}" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-key me-1"></i> Change Password
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Two-Factor Authentication</h6>
+                            <p class="text-muted small">Add an extra layer of security</p>
+                            <button class="btn btn-outline-secondary btn-sm" disabled>
+                                <i class="bi bi-phone me-1"></i> Enable 2FA
+                            </button>
+                            <small class="text-muted d-block mt-1">Coming soon</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+</body>
+</html>

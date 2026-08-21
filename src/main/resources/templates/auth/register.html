@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Digital Bank</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #0d6efd 0%, #0143a3 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 40px 0;
+        }
+        .register-card {
+            max-width: 500px;
+            margin: auto;
+        }
+        .password-toggle {
+            cursor: pointer;
+            border-left: none;
+        }
+        .password-toggle:hover {
+            background-color: #e9ecef;
+        }
+        .form-control:focus + .password-toggle {
+            border-color: #86b7fe;
+        }
+        .is-invalid ~ .password-toggle {
+            border-color: #dc3545;
+        }
+        .password-requirements {
+            font-size: 0.85rem;
+        }
+        .password-requirements li {
+            margin-bottom: 2px;
+        }
+        .password-requirements .valid {
+            color: #198754;
+        }
+        .password-requirements .invalid {
+            color: #6c757d;
+        }
+        .password-strength {
+            height: 5px;
+            border-radius: 3px;
+            transition: all 0.3s ease;
+        }
+        .strength-weak { background-color: #dc3545; width: 33%; }
+        .strength-medium { background-color: #ffc107; width: 66%; }
+        .strength-strong { background-color: #198754; width: 100%; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="register-card card shadow-lg">
+        <div class="card-body p-5">
+            <div class="text-center mb-4">
+                <i class="bi bi-bank2 text-primary" style="font-size: 3rem;"></i>
+                <h2 class="mt-2">Create Account</h2>
+                <p class="text-muted">Join Digital Bank today</p>
+            </div>
+
+            <div th:if="${error}" class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i><span th:text="${error}"></span>
+            </div>
+
+            <form id="registerForm" th:action="@{/register}" method="post" novalidate>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="firstName" class="form-label">First Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="firstName" name="firstName"
+                               placeholder="John" required minlength="2" maxlength="50" autocomplete="given-name">
+                        <div class="invalid-feedback" id="firstNameError">
+                            First name must be 2-50 characters.
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="lastName" class="form-label">Last Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="lastName" name="lastName"
+                               placeholder="Doe" required minlength="2" maxlength="50" autocomplete="family-name">
+                        <div class="invalid-feedback" id="lastNameError">
+                            Last name must be 2-50 characters.
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                        <input type="email" class="form-control" id="email" name="email"
+                               placeholder="john@example.com" required autocomplete="email">
+                        <div class="invalid-feedback" id="emailError">
+                            Please enter a valid email address.
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="phone" class="form-label">Phone Number</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-phone"></i></span>
+                        <input type="tel" class="form-control" id="phone" name="phone"
+                               placeholder="+91 9876543210" autocomplete="tel"
+                               pattern="[\+]?[0-9\s\-]{10,15}">
+                        <div class="invalid-feedback" id="phoneError">
+                            Please enter a valid phone number (10-15 digits).
+                        </div>
+                    </div>
+                    <small class="text-muted">Optional - Format: +91 9876543210</small>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                        <input type="password" class="form-control" id="password" name="password"
+                               placeholder="Create a strong password" required minlength="8" autocomplete="new-password">
+                        <span class="input-group-text password-toggle" id="togglePassword">
+                            <i class="bi bi-eye" id="togglePasswordIcon"></i>
+                        </span>
+                        <div class="invalid-feedback" id="passwordError">
+                            Password does not meet requirements.
+                        </div>
+                    </div>
+                    <!-- Password Strength Indicator -->
+                    <div class="mt-2">
+                        <div class="bg-light rounded" style="height: 5px;">
+                            <div class="password-strength" id="passwordStrength"></div>
+                        </div>
+                        <small class="text-muted" id="strengthText"></small>
+                    </div>
+                    <!-- Password Requirements Checklist -->
+                    <ul class="password-requirements list-unstyled mt-2 mb-0">
+                        <li id="req-length"><i class="bi bi-circle me-1"></i>At least 8 characters</li>
+                        <li id="req-uppercase"><i class="bi bi-circle me-1"></i>At least 1 uppercase letter</li>
+                        <li id="req-lowercase"><i class="bi bi-circle me-1"></i>At least 1 lowercase letter</li>
+                        <li id="req-number"><i class="bi bi-circle me-1"></i>At least 1 number</li>
+                        <li id="req-special"><i class="bi bi-circle me-1"></i>At least 1 special character (!@#$%^&*)</li>
+                    </ul>
+                </div>
+                <div class="mb-4">
+                    <label for="confirmPassword" class="form-label">Confirm Password <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                        <input type="password" class="form-control" id="confirmPassword"
+                               placeholder="Repeat your password" required autocomplete="new-password">
+                        <span class="input-group-text password-toggle" id="toggleConfirmPassword">
+                            <i class="bi bi-eye" id="toggleConfirmPasswordIcon"></i>
+                        </span>
+                        <div class="invalid-feedback" id="confirmPasswordError">
+                            Passwords do not match.
+                        </div>
+                    </div>
+                    <div id="passwordMatch" class="mt-1" style="display: none;">
+                        <small class="text-success"><i class="bi bi-check-circle me-1"></i>Passwords match</small>
+                    </div>
+                </div>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                        <span id="submitText">Create Account</span>
+                        <span id="submitSpinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status"></span>
+                    </button>
+                </div>
+            </form>
+
+            <hr class="my-4">
+
+            <p class="text-center mb-0">
+                Already have an account?
+                <a th:href="@{/login}" class="text-decoration-none">Sign in here</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('registerForm');
+        const firstNameInput = document.getElementById('firstName');
+        const lastNameInput = document.getElementById('lastName');
+        const emailInput = document.getElementById('email');
+        const phoneInput = document.getElementById('phone');
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+        const submitBtn = document.getElementById('submitBtn');
+        const submitText = document.getElementById('submitText');
+        const submitSpinner = document.getElementById('submitSpinner');
+
+        // Password toggle buttons
+        const togglePassword = document.getElementById('togglePassword');
+        const togglePasswordIcon = document.getElementById('togglePasswordIcon');
+        const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+        const toggleConfirmPasswordIcon = document.getElementById('toggleConfirmPasswordIcon');
+
+        // Password requirements elements
+        const reqLength = document.getElementById('req-length');
+        const reqUppercase = document.getElementById('req-uppercase');
+        const reqLowercase = document.getElementById('req-lowercase');
+        const reqNumber = document.getElementById('req-number');
+        const reqSpecial = document.getElementById('req-special');
+        const passwordStrength = document.getElementById('passwordStrength');
+        const strengthText = document.getElementById('strengthText');
+        const passwordMatch = document.getElementById('passwordMatch');
+
+        // Toggle password visibility
+        function setupPasswordToggle(toggleBtn, toggleIcon, inputField) {
+            toggleBtn.addEventListener('click', function() {
+                if (inputField.type === 'password') {
+                    inputField.type = 'text';
+                    toggleIcon.classList.remove('bi-eye');
+                    toggleIcon.classList.add('bi-eye-slash');
+                } else {
+                    inputField.type = 'password';
+                    toggleIcon.classList.remove('bi-eye-slash');
+                    toggleIcon.classList.add('bi-eye');
+                }
+                inputField.focus();
+            });
+        }
+
+        setupPasswordToggle(togglePassword, togglePasswordIcon, passwordInput);
+        setupPasswordToggle(toggleConfirmPassword, toggleConfirmPasswordIcon, confirmPasswordInput);
+
+        // Validation functions
+        function isValidEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+
+        function isValidPhone(phone) {
+            if (!phone) return true; // Phone is optional
+            const phoneRegex = /^[\+]?[0-9\s\-]{10,15}$/;
+            return phoneRegex.test(phone.replace(/\s/g, ''));
+        }
+
+        function isValidName(name) {
+            return name && name.length >= 2 && name.length <= 50;
+        }
+
+        // Password validation with detailed requirements
+        function validatePassword(password) {
+            const requirements = {
+                length: password.length >= 8,
+                uppercase: /[A-Z]/.test(password),
+                lowercase: /[a-z]/.test(password),
+                number: /[0-9]/.test(password),
+                special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+            };
+
+            // Update requirement indicators
+            updateRequirement(reqLength, requirements.length);
+            updateRequirement(reqUppercase, requirements.uppercase);
+            updateRequirement(reqLowercase, requirements.lowercase);
+            updateRequirement(reqNumber, requirements.number);
+            updateRequirement(reqSpecial, requirements.special);
+
+            // Calculate strength
+            const score = Object.values(requirements).filter(Boolean).length;
+            updatePasswordStrength(score);
+
+            return Object.values(requirements).every(Boolean);
+        }
+
+        function updateRequirement(element, isValid) {
+            const icon = element.querySelector('i');
+            if (isValid) {
+                element.classList.add('valid');
+                element.classList.remove('invalid');
+                icon.classList.remove('bi-circle');
+                icon.classList.add('bi-check-circle-fill');
+            } else {
+                element.classList.remove('valid');
+                element.classList.add('invalid');
+                icon.classList.remove('bi-check-circle-fill');
+                icon.classList.add('bi-circle');
+            }
+        }
+
+        function updatePasswordStrength(score) {
+            passwordStrength.className = 'password-strength';
+            if (score === 0) {
+                passwordStrength.style.width = '0';
+                strengthText.textContent = '';
+            } else if (score <= 2) {
+                passwordStrength.classList.add('strength-weak');
+                strengthText.textContent = 'Weak password';
+                strengthText.className = 'text-danger';
+            } else if (score <= 4) {
+                passwordStrength.classList.add('strength-medium');
+                strengthText.textContent = 'Medium strength';
+                strengthText.className = 'text-warning';
+            } else {
+                passwordStrength.classList.add('strength-strong');
+                strengthText.textContent = 'Strong password';
+                strengthText.className = 'text-success';
+            }
+        }
+
+        // Check if passwords match
+        function checkPasswordsMatch() {
+            const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+
+            if (confirmPassword) {
+                if (password === confirmPassword) {
+                    confirmPasswordInput.classList.remove('is-invalid');
+                    confirmPasswordInput.classList.add('is-valid');
+                    passwordMatch.style.display = 'block';
+                    return true;
+                } else {
+                    confirmPasswordInput.classList.add('is-invalid');
+                    confirmPasswordInput.classList.remove('is-valid');
+                    passwordMatch.style.display = 'none';
+                    return false;
+                }
+            }
+            passwordMatch.style.display = 'none';
+            return false;
+        }
+
+        // Add validation class helper
+        function setValidationState(input, isValid) {
+            if (isValid) {
+                input.classList.remove('is-invalid');
+                input.classList.add('is-valid');
+            } else {
+                input.classList.add('is-invalid');
+                input.classList.remove('is-valid');
+            }
+        }
+
+        // Real-time validation events
+        firstNameInput.addEventListener('blur', function() {
+            if (this.value) {
+                setValidationState(this, isValidName(this.value));
+            }
+        });
+
+        firstNameInput.addEventListener('input', function() {
+            if (this.classList.contains('is-invalid') && isValidName(this.value)) {
+                setValidationState(this, true);
+            }
+        });
+
+        lastNameInput.addEventListener('blur', function() {
+            if (this.value) {
+                setValidationState(this, isValidName(this.value));
+            }
+        });
+
+        lastNameInput.addEventListener('input', function() {
+            if (this.classList.contains('is-invalid') && isValidName(this.value)) {
+                setValidationState(this, true);
+            }
+        });
+
+        emailInput.addEventListener('blur', function() {
+            if (this.value) {
+                setValidationState(this, isValidEmail(this.value));
+            }
+        });
+
+        emailInput.addEventListener('input', function() {
+            if (this.classList.contains('is-invalid') && isValidEmail(this.value)) {
+                setValidationState(this, true);
+            }
+        });
+
+        phoneInput.addEventListener('blur', function() {
+            if (this.value) {
+                setValidationState(this, isValidPhone(this.value));
+            }
+        });
+
+        phoneInput.addEventListener('input', function() {
+            if (this.classList.contains('is-invalid') && isValidPhone(this.value)) {
+                setValidationState(this, true);
+            }
+        });
+
+        passwordInput.addEventListener('input', function() {
+            const isValid = validatePassword(this.value);
+            if (this.value) {
+                setValidationState(this, isValid);
+            }
+            // Also check confirm password match
+            if (confirmPasswordInput.value) {
+                checkPasswordsMatch();
+            }
+        });
+
+        passwordInput.addEventListener('blur', function() {
+            if (this.value) {
+                setValidationState(this, validatePassword(this.value));
+            }
+        });
+
+        confirmPasswordInput.addEventListener('input', function() {
+            checkPasswordsMatch();
+        });
+
+        confirmPasswordInput.addEventListener('blur', function() {
+            if (this.value) {
+                checkPasswordsMatch();
+            }
+        });
+
+        // Form submission
+        form.addEventListener('submit', function(e) {
+            let isValid = true;
+
+            // Validate first name
+            if (!isValidName(firstNameInput.value)) {
+                setValidationState(firstNameInput, false);
+                isValid = false;
+            } else {
+                setValidationState(firstNameInput, true);
+            }
+
+            // Validate last name
+            if (!isValidName(lastNameInput.value)) {
+                setValidationState(lastNameInput, false);
+                isValid = false;
+            } else {
+                setValidationState(lastNameInput, true);
+            }
+
+            // Validate email
+            if (!isValidEmail(emailInput.value)) {
+                setValidationState(emailInput, false);
+                isValid = false;
+            } else {
+                setValidationState(emailInput, true);
+            }
+
+            // Validate phone (optional)
+            if (phoneInput.value && !isValidPhone(phoneInput.value)) {
+                setValidationState(phoneInput, false);
+                isValid = false;
+            } else if (phoneInput.value) {
+                setValidationState(phoneInput, true);
+            }
+
+            // Validate password
+            if (!validatePassword(passwordInput.value)) {
+                setValidationState(passwordInput, false);
+                isValid = false;
+            } else {
+                setValidationState(passwordInput, true);
+            }
+
+            // Validate password match
+            if (!confirmPasswordInput.value || passwordInput.value !== confirmPasswordInput.value) {
+                setValidationState(confirmPasswordInput, false);
+                isValid = false;
+            } else {
+                setValidationState(confirmPasswordInput, true);
+            }
+
+            if (!isValid) {
+                e.preventDefault();
+                // Scroll to first error
+                const firstError = document.querySelector('.is-invalid');
+                if (firstError) {
+                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    firstError.focus();
+                }
+                return;
+            }
+
+            // Show loading state
+            submitBtn.disabled = true;
+            submitText.textContent = 'Creating Account...';
+            submitSpinner.classList.remove('d-none');
+        });
+    });
+</script>
+</body>
+</html>
