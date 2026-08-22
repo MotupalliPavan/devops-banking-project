@@ -217,7 +217,7 @@ mvn test jacoco:report
 ```
 ## Added SonarQube
 
-- **for code quality
+- **Sonarcube for code quality
 
 ## Docker Configuration
 
