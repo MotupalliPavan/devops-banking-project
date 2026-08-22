@@ -1,3 +1,6 @@
+cd ~/devops-banking-project
+
+cat > Jenkinsfile <<'EOF'
 pipeline {
     agent any
 
@@ -57,48 +60,58 @@ pipeline {
         }
 
         stage('Deploy') {
-    steps {
-        sh '''
-            echo "Stopping existing banking deployment..."
+            steps {
+                sh '''
+                    set -e
 
-            docker compose down --remove-orphans || true
+                    echo "=== Stopping existing banking deployment ==="
+                    docker compose down --remove-orphans || true
 
-            echo "Starting new banking deployment..."
+                    echo "=== Starting new banking deployment ==="
+                    docker compose up -d
 
-            docker compose up -d
-        '''
-    }
-}
+                    echo "=== Deployment status ==="
+                    docker compose ps
+                '''
+            }
+        }
 
         stage('Health Check') {
-    steps {
-        sh '''
-            echo "Waiting for application to become healthy..."
+            steps {
+                sh '''
+                    set -e
 
-            for i in $(seq 1 30); do
-                STATUS=$(docker inspect --format='{{.State.Health.Status}}' digital-banking-cicd-app-1 2>/dev/null || echo "starting")
+                    echo "Waiting for application to become healthy..."
 
-                echo "Application health: $STATUS"
+                    for i in $(seq 1 30); do
+                        STATUS=$(docker compose ps -q app | xargs -r docker inspect --format='{{.State.Health.Status}}' 2>/dev/null || echo "starting")
 
-                if [ "$STATUS" = "healthy" ]; then
-                    echo "Application is healthy!"
-                    curl --fail --silent --show-error http://localhost:8081/login > /dev/null
-                    exit 0
-                fi
+                        echo "Application health: $STATUS"
 
-                if [ "$STATUS" = "unhealthy" ]; then
-                    echo "Application became unhealthy."
+                        if [ "$STATUS" = "healthy" ]; then
+                            echo "Application is healthy!"
+
+                            curl --fail --silent --show-error \
+                                http://localhost:8081/login > /dev/null
+
+                            echo "HTTP health check passed!"
+                            exit 0
+                        fi
+
+                        if [ "$STATUS" = "unhealthy" ]; then
+                            echo "Application became unhealthy."
+                            docker compose logs app
+                            exit 1
+                        fi
+
+                        sleep 5
+                    done
+
+                    echo "Application did not become healthy within 150 seconds."
                     docker compose logs app
                     exit 1
-                fi
-
-                sleep 5
-            done
-
-            echo "Application did not become healthy within 150 seconds."
-            docker compose logs app
-            exit 1
-        '''
+                '''
+            }
         }
     }
 
@@ -108,7 +121,7 @@ pipeline {
         }
 
         failure {
-            echo 'Pipeline failed. Check the stage logs.'
+            echo 'Pipeline failed. Check the console output.'
         }
 
         always {
@@ -116,4 +129,4 @@ pipeline {
         }
     }
 }
-
+EOF
