@@ -43,6 +43,7 @@ pipeline {
                 }
             }
         }
+
 	stage('SonarQube Analysis') {
     		steps {
         	withSonarQubeEnv('SonarQube') {
@@ -54,6 +55,7 @@ pipeline {
        			}	
    		 }
 	}
+	
 	stage('Quality Gate') {
     		steps {
         	timeout(time: 5, unit: 'MINUTES') {
@@ -62,11 +64,6 @@ pipeline {
    		 }
 	}
 
-	stage('Package') {
-    		steps {
-        	sh 'mvn package -DskipTests'
-   		 }
- 	} 
         stage('Package') {
             steps {
                 sh 'mvn package -DskipTests'
