@@ -1,6 +1,3 @@
-cd ~/devops-banking-project
-
-cat > Jenkinsfile <<'EOF'
 pipeline {
     agent any
 
@@ -129,4 +126,3 @@ pipeline {
         }
     }
 }
-EOF
