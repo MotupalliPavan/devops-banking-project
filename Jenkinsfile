@@ -1,5 +1,11 @@
-pipeline {
+pipeline 
     agent any
+
+    environment {
+        APP_NAME = "digital-banking-cicd-app"
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        APP_IMAGE = "digital-banking-cicd-app:${BUILD_NUMBER}"
+    }
 
     options {
         timestamps()
@@ -13,8 +19,7 @@ pipeline {
                 checkout scm
             }
         }
-
-        stage('Verify Environment') {
+	stage('Verify Environment') {
             steps {
                 sh 'java -version'
                 sh 'mvn -version'
@@ -72,24 +77,30 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh 'docker compose build'
+              	 sh '''
+            echo "Building Docker image..."
+
+            docker build \
+                -t ${APP_IMAGE} \
+                -t ${APP_NAME}:latest \
+                .
+        '''
             }
         }
 
         stage('Deploy') {
             steps {
                 sh '''
-                    set -e
+            echo "Stopping existing deployment..."
 
-                    echo "=== Stopping existing banking deployment ==="
-                    docker compose down --remove-orphans || true
+            docker compose down --remove-orphans || true
 
-                    echo "=== Starting new banking deployment ==="
-                    docker compose up -d
+            echo "Deploying image: ${APP_IMAGE}"
 
-                    echo "=== Deployment status ==="
-                    docker compose ps
-                '''
+            export APP_IMAGE=${APP_IMAGE}
+
+            docker compose up -d
+        '''
             }
         }
 

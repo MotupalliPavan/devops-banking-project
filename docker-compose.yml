@@ -18,6 +18,7 @@ services:
 
   # Spring Boot Application
   app:
+    image: ${APP_IMAGE:-digital-banking-cicd-app:latest}
     build: .
     ports:
       - "8081:8080"
