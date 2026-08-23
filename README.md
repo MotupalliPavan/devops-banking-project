@@ -219,6 +219,10 @@ mvn test jacoco:report
 
 - **Sonarcube for code quality
 
+## Doker Tag
+
+- **For rolback 
+
 ## Docker Configuration
 
 The application includes Docker support with:
@@ -261,3 +265,4 @@ docker-compose down -v
 ## License
 
 This project is for educational purposes.
+
