@@ -133,20 +133,23 @@ pipeline {
     }
 }
         stage('Deploy') {
-            steps {
-                sh '''
-                    echo "Stopping existing deployment..."
+    steps {
+        sh '''
+            echo "Deploying Docker image: ${DOCKERHUB_REPO}:${IMAGE_TAG}"
 
-                    docker compose down --remove-orphans || true
+            echo "Stopping existing deployment..."
+            docker compose down --remove-orphans || true
 
-                    echo "Deploying image: ${APP_IMAGE}"
+            echo "Pulling image from Docker Hub..."
+            IMAGE_TAG=${IMAGE_TAG} docker compose pull app
 
-                    export APP_IMAGE=${APP_IMAGE}
+            echo "Starting application..."
+            IMAGE_TAG=${IMAGE_TAG} docker compose up -d
 
-                    docker compose up -d
-                '''
-            }
-        }
+            echo "Deployment completed."
+        '''
+    }
+}
 
         stage('Health Check') {
             steps {
