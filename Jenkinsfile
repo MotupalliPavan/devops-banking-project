@@ -3,8 +3,10 @@ pipeline {
     agent any
 
     environment {
-    DOCKERHUB_REPO = "motupallipavan/digital-banking-cicd-app"
+    APP_NAME = "digital-banking-cicd-app"
     IMAGE_TAG = "${BUILD_NUMBER}"
+
+    DOCKERHUB_REPO = "YOUR_DOCKER_USERNAME/digital-banking-cicd-app"
 }
 
     options {
@@ -77,17 +79,19 @@ pipeline {
         }
 
         stage('Docker Build') {
-            steps {
-                sh '''
-                    echo "Building Docker image: ${APP_IMAGE}"
+    steps {
+        sh '''
+            echo "Building Docker image: ${APP_NAME}:${IMAGE_TAG}"
 
-                    docker build \
-                        -t ${APP_IMAGE} \
-                        -t ${APP_NAME}:latest \
-                        .
-                '''
-            }
-        }
+            docker build -t ${APP_NAME}:${IMAGE_TAG} .
+
+            docker tag ${APP_NAME}:${IMAGE_TAG} ${APP_NAME}:latest
+
+            echo "Local Docker images:"
+            docker images ${APP_NAME}
+        '''
+    }
+}
 
 	stage('Docker Push') {
     		steps {
