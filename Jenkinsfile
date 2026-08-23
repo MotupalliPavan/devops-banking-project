@@ -5,7 +5,7 @@ pipeline {
     environment {
     DOCKERHUB_REPO = "motupallipavan/digital-banking-cicd-app"
     IMAGE_TAG = "${BUILD_NUMBER}"
-    APP_IMAGE = "${DOCKERHUB_REPO}:${BUILD_NUMBER}"
+    APP_IMAGE = "motupallipavan/digital-banking-cicd-app:${BUILD_NUMBER}"
     LAST_SUCCESS_FILE = "last-successful-image.txt"
 }
     options {
@@ -80,59 +80,35 @@ pipeline {
         stage('Docker Build') {
     steps {
         sh '''
-            echo "Building Docker image: ${APP_NAME}:${IMAGE_TAG}"
+            echo "Building Docker image: ${APP_IMAGE}"
 
-            docker build -t ${APP_NAME}:${IMAGE_TAG} .
-
-            docker tag ${APP_NAME}:${IMAGE_TAG} ${APP_NAME}:latest
-
-            echo "Local Docker images:"
-            docker images ${APP_NAME}
+            docker build -t ${APP_IMAGE} .
         '''
     }
 }
-
 	stage('Docker Push') {
-    		steps {
-        	withCredentials([
-            	usernamePassword(
+    steps {
+        withCredentials([
+            usernamePassword(
                 credentialsId: 'dockerhub-credentials',
                 usernameVariable: 'DOCKER_USERNAME',
                 passwordVariable: 'DOCKER_PASSWORD'
             )
         ]) {
             sh '''
-                echo "Logging in to Docker Hub..."
-
                 echo "$DOCKER_PASSWORD" | docker login \
-                    --username "$DOCKER_USERNAME" \
+                    -u "$DOCKER_USERNAME" \
                     --password-stdin
 
-                echo "Tagging Docker image..."
+                echo "Pushing Docker image: ${APP_IMAGE}"
 
-                docker tag \
-                    digital-banking-cicd-app:${IMAGE_TAG} \
-                    ${DOCKERHUB_REPO}:${IMAGE_TAG}
-
-                docker tag \
-                    digital-banking-cicd-app:${IMAGE_TAG} \
-                    ${DOCKERHUB_REPO}:latest
-
-                echo "Pushing version ${IMAGE_TAG}..."
-
-                docker push ${DOCKERHUB_REPO}:${IMAGE_TAG}
-
-                echo "Pushing latest..."
-
-                docker push ${DOCKERHUB_REPO}:latest
-
-                echo "Docker images pushed successfully!"
+                docker push ${APP_IMAGE}
             '''
         }
     }
 }
-        stage('Deploy') {
-    steps {
+	stage('Deploy') {
+	steps {
         sh '''
             echo "Stopping existing deployment..."
 
@@ -230,5 +206,20 @@ pipeline {
         always {
             sh 'docker compose ps || true'
         }
+    }
+}
+stage('Verify Environment') {
+    steps {
+        sh '''
+            java -version
+            mvn -version
+            docker --version
+            docker compose version
+
+            echo "BUILD_NUMBER=${BUILD_NUMBER}"
+            echo "DOCKERHUB_REPO=${DOCKERHUB_REPO}"
+            echo "IMAGE_TAG=${IMAGE_TAG}"
+            echo "APP_IMAGE=${APP_IMAGE}"
+        '''
     }
 }
