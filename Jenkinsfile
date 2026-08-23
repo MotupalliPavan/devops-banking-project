@@ -6,7 +6,7 @@ pipeline {
     APP_NAME = "digital-banking-cicd-app"
     IMAGE_TAG = "${BUILD_NUMBER}"
 
-    DOCKERHUB_REPO = "YOUR_DOCKER_USERNAME/digital-banking-cicd-app"
+    DOCKERHUB_REPO = "motupallipavan/digital-banking-cicd-app"
 }
 
     options {
