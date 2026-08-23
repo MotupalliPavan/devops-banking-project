@@ -3,10 +3,9 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME  = "digital-banking-cicd-app"
-        IMAGE_TAG = "${BUILD_NUMBER}"
-        APP_IMAGE = "digital-banking-cicd-app:${BUILD_NUMBER}"
-    }
+    DOCKERHUB_REPO = "motupallipavan/digital-banking-cicd-app"
+    IMAGE_TAG = "${BUILD_NUMBER}"
+}
 
     options {
         timestamps()
@@ -90,6 +89,45 @@ pipeline {
             }
         }
 
+	stage('Docker Push') {
+    		steps {
+        	withCredentials([
+            	usernamePassword(
+                credentialsId: 'dockerhub-credentials',
+                usernameVariable: 'DOCKER_USERNAME',
+                passwordVariable: 'DOCKER_PASSWORD'
+            )
+        ]) {
+            sh '''
+                echo "Logging in to Docker Hub..."
+
+                echo "$DOCKER_PASSWORD" | docker login \
+                    --username "$DOCKER_USERNAME" \
+                    --password-stdin
+
+                echo "Tagging Docker image..."
+
+                docker tag \
+                    digital-banking-cicd-app:${IMAGE_TAG} \
+                    ${DOCKERHUB_REPO}:${IMAGE_TAG}
+
+                docker tag \
+                    digital-banking-cicd-app:${IMAGE_TAG} \
+                    ${DOCKERHUB_REPO}:latest
+
+                echo "Pushing version ${IMAGE_TAG}..."
+
+                docker push ${DOCKERHUB_REPO}:${IMAGE_TAG}
+
+                echo "Pushing latest..."
+
+                docker push ${DOCKERHUB_REPO}:latest
+
+                echo "Docker images pushed successfully!"
+            '''
+        }
+    }
+}
         stage('Deploy') {
             steps {
                 sh '''
