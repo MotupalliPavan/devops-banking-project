@@ -150,35 +150,29 @@ pipeline {
         '''
     }
 }
-
         stage('Health Check') {
-            steps {
+    steps {
+        script {
+            try {
                 sh '''
                     echo "Waiting for application to become healthy..."
 
                     for i in $(seq 1 30); do
-
-                        STATUS=$(docker compose ps -q app | xargs -r docker inspect \
-                            --format='{{.State.Health.Status}}' 2>/dev/null || echo "starting")
+                        STATUS=$(docker inspect \
+                            --format='{{.State.Health.Status}}' \
+                            digital-banking-app 2>/dev/null || echo "starting")
 
                         echo "Application health: $STATUS"
 
                         if [ "$STATUS" = "healthy" ]; then
                             echo "Application is healthy!"
-
                             curl --fail --silent --show-error \
                                 http://localhost:8081/login > /dev/null
-
-                            echo "Application endpoint is responding!"
-
                             exit 0
                         fi
 
                         if [ "$STATUS" = "unhealthy" ]; then
                             echo "Application became unhealthy."
-
-                            docker compose logs app
-
                             exit 1
                         fi
 
@@ -186,14 +180,33 @@ pipeline {
                     done
 
                     echo "Application did not become healthy within 150 seconds."
-
-                    docker compose logs app
-
                     exit 1
                 '''
+            } catch (Exception e) {
+
+                echo "Deployment failed. Starting rollback..."
+
+                sh '''
+                    echo "Rolling back to previous image..."
+
+                    PREVIOUS_BUILD=$((BUILD_NUMBER - 1))
+
+                    echo "Previous image: ${DOCKERHUB_REPO}:${PREVIOUS_BUILD}"
+
+                    IMAGE_TAG=${PREVIOUS_BUILD} docker compose pull app
+
+                    docker compose down --remove-orphans
+
+                    IMAGE_TAG=${PREVIOUS_BUILD} docker compose up -d
+
+                    echo "Rollback deployment started."
+                '''
+
+                throw e
             }
         }
-
+    }
+}
         stage('Docker Cleanup') {
             steps {
                 sh '''
