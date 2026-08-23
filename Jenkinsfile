@@ -1,8 +1,9 @@
-pipeline 
+pipeline {
+
     agent any
 
     environment {
-        APP_NAME = "digital-banking-cicd-app"
+        APP_NAME  = "digital-banking-cicd-app"
         IMAGE_TAG = "${BUILD_NUMBER}"
         APP_IMAGE = "digital-banking-cicd-app:${BUILD_NUMBER}"
     }
@@ -19,7 +20,8 @@ pipeline
                 checkout scm
             }
         }
-	stage('Verify Environment') {
+
+        stage('Verify Environment') {
             steps {
                 sh 'java -version'
                 sh 'mvn -version'
@@ -49,25 +51,25 @@ pipeline
             }
         }
 
-	stage('SonarQube Analysis') {
-    		steps {
-        	withSonarQubeEnv('SonarQube') {
-            	sh '''
-                	mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
-                  	-Dsonar.projectKey=digital-banking-system \
-                  	-Dsonar.projectName="Digital Banking System"
-            	'''
-       			}	
-   		 }
-	}
-	
-	stage('Quality Gate') {
-    		steps {
-        	timeout(time: 5, unit: 'MINUTES') {
-            	waitForQualityGate abortPipeline: true
-       			 }
-   		 }
-	}
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                        mvn sonar:sonar \
+                          -Dsonar.projectKey=digital-banking-system \
+                          -Dsonar.projectName=digital-banking-system
+                    '''
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 10, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
 
         stage('Package') {
             steps {
@@ -77,42 +79,42 @@ pipeline
 
         stage('Docker Build') {
             steps {
-              	 sh '''
-            echo "Building Docker image..."
+                sh '''
+                    echo "Building Docker image: ${APP_IMAGE}"
 
-            docker build \
-                -t ${APP_IMAGE} \
-                -t ${APP_NAME}:latest \
-                .
-        '''
+                    docker build \
+                        -t ${APP_IMAGE} \
+                        -t ${APP_NAME}:latest \
+                        .
+                '''
             }
         }
 
         stage('Deploy') {
             steps {
                 sh '''
-            echo "Stopping existing deployment..."
+                    echo "Stopping existing deployment..."
 
-            docker compose down --remove-orphans || true
+                    docker compose down --remove-orphans || true
 
-            echo "Deploying image: ${APP_IMAGE}"
+                    echo "Deploying image: ${APP_IMAGE}"
 
-            export APP_IMAGE=${APP_IMAGE}
+                    export APP_IMAGE=${APP_IMAGE}
 
-            docker compose up -d
-        '''
+                    docker compose up -d
+                '''
             }
         }
 
         stage('Health Check') {
             steps {
                 sh '''
-                    set -e
-
                     echo "Waiting for application to become healthy..."
 
                     for i in $(seq 1 30); do
-                        STATUS=$(docker compose ps -q app | xargs -r docker inspect --format='{{.State.Health.Status}}' 2>/dev/null || echo "starting")
+
+                        STATUS=$(docker compose ps -q app | xargs -r docker inspect \
+                            --format='{{.State.Health.Status}}' 2>/dev/null || echo "starting")
 
                         echo "Application health: $STATUS"
 
@@ -122,13 +124,16 @@ pipeline
                             curl --fail --silent --show-error \
                                 http://localhost:8081/login > /dev/null
 
-                            echo "HTTP health check passed!"
+                            echo "Application endpoint is responding!"
+
                             exit 0
                         fi
 
                         if [ "$STATUS" = "unhealthy" ]; then
                             echo "Application became unhealthy."
+
                             docker compose logs app
+
                             exit 1
                         fi
 
@@ -136,14 +141,28 @@ pipeline
                     done
 
                     echo "Application did not become healthy within 150 seconds."
+
                     docker compose logs app
+
                     exit 1
+                '''
+            }
+        }
+
+        stage('Docker Cleanup') {
+            steps {
+                sh '''
+                    echo "Cleaning unused Docker resources..."
+
+                    docker image prune -f
+                    docker container prune -f
                 '''
             }
         }
     }
 
     post {
+
         success {
             echo 'Banking application deployed successfully!'
         }
@@ -157,4 +176,3 @@ pipeline
         }
     }
 }
-
