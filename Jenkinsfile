@@ -3,12 +3,11 @@ pipeline {
     agent any
 
     environment {
-    APP_NAME = "digital-banking-cicd-app"
-    IMAGE_TAG = "${BUILD_NUMBER}"
-
     DOCKERHUB_REPO = "motupallipavan/digital-banking-cicd-app"
+    IMAGE_TAG = "${BUILD_NUMBER}"
+    APP_IMAGE = "${DOCKERHUB_REPO}:${BUILD_NUMBER}"
+    LAST_SUCCESS_FILE = "last-successful-image.txt"
 }
-
     options {
         timestamps()
         buildDiscarder(logRotator(numToKeepStr: '10'))
@@ -135,79 +134,78 @@ pipeline {
         stage('Deploy') {
     steps {
         sh '''
-            echo "Deploying Docker image: ${DOCKERHUB_REPO}:${IMAGE_TAG}"
-
             echo "Stopping existing deployment..."
+
             docker compose down --remove-orphans || true
 
-            echo "Pulling image from Docker Hub..."
+            echo "Pulling image: ${APP_IMAGE}"
+
             IMAGE_TAG=${IMAGE_TAG} docker compose pull app
 
             echo "Starting application..."
-            IMAGE_TAG=${IMAGE_TAG} docker compose up -d
 
-            echo "Deployment completed."
+            IMAGE_TAG=${IMAGE_TAG} docker compose up -d
         '''
     }
 }
-        stage('Health Check') {
+ 	stage('Health Check') {
+   	 steps {
+        	sh '''
+            	echo "Waiting for application to become healthy..."
+
+            for i in $(seq 1 30); do
+
+                STATUS=$(docker inspect \
+                    --format='{{.State.Health.Status}}' \
+                    digital-banking-app 2>/dev/null || echo "starting")
+
+                echo "Application health: $STATUS"
+
+                if [ "$STATUS" = "healthy" ]; then
+
+                    echo "Application is healthy!"
+
+                    curl --fail --silent --show-error \
+                        http://localhost:8081/login > /dev/null
+
+                    exit 0
+                fi
+
+                if [ "$STATUS" = "unhealthy" ]; then
+                    echo "Application became unhealthy."
+                    docker compose logs app
+                    exit 1
+                fi
+
+                sleep 5
+            done
+
+            echo "Application did not become healthy within 150 seconds."
+
+            docker compose logs app
+
+            exit 1
+        '''
+    }
+}
+	stage('Record Successful Deployment') {
     steps {
         script {
-            try {
-                sh '''
-                    echo "Waiting for application to become healthy..."
+            writeFile(
+                file: env.LAST_SUCCESS_FILE,
+                text: env.IMAGE_TAG
+            )
 
-                    for i in $(seq 1 30); do
-                        STATUS=$(docker inspect \
-                            --format='{{.State.Health.Status}}' \
-                            digital-banking-app 2>/dev/null || echo "starting")
+            archiveArtifacts(
+                artifacts: env.LAST_SUCCESS_FILE,
+                fingerprint: true
+            )
 
-                        echo "Application health: $STATUS"
-
-                        if [ "$STATUS" = "healthy" ]; then
-                            echo "Application is healthy!"
-                            curl --fail --silent --show-error \
-                                http://localhost:8081/login > /dev/null
-                            exit 0
-                        fi
-
-                        if [ "$STATUS" = "unhealthy" ]; then
-                            echo "Application became unhealthy."
-                            exit 1
-                        fi
-
-                        sleep 5
-                    done
-
-                    echo "Application did not become healthy within 150 seconds."
-                    exit 1
-                '''
-            } catch (Exception e) {
-
-                echo "Deployment failed. Starting rollback..."
-
-                sh '''
-                    echo "Rolling back to previous image..."
-
-                    PREVIOUS_BUILD=$((BUILD_NUMBER - 1))
-
-                    echo "Previous image: ${DOCKERHUB_REPO}:${PREVIOUS_BUILD}"
-
-                    IMAGE_TAG=${PREVIOUS_BUILD} docker compose pull app
-
-                    docker compose down --remove-orphans
-
-                    IMAGE_TAG=${PREVIOUS_BUILD} docker compose up -d
-
-                    echo "Rollback deployment started."
-                '''
-
-                throw e
-            }
+            echo "Successfully deployed image: ${env.APP_IMAGE}"
         }
     }
 }
-        stage('Docker Cleanup') {
+	stage('Docker Cleanup') {
             steps {
                 sh '''
                     echo "Cleaning unused Docker resources..."
