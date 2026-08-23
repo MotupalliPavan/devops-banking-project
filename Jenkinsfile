@@ -208,18 +208,14 @@ pipeline {
         }
     }
 }
-stage('Verify Environment') {
-    steps {
-        sh '''
-            java -version
-            mvn -version
-            docker --version
-            docker compose version
 
-            echo "BUILD_NUMBER=${BUILD_NUMBER}"
-            echo "DOCKERHUB_REPO=${DOCKERHUB_REPO}"
-            echo "IMAGE_TAG=${IMAGE_TAG}"
-            echo "APP_IMAGE=${APP_IMAGE}"
-        '''
+	stage('Verify Environment') {
+    		steps {
+        	sh '''
+            	echo "BUILD_NUMBER=${BUILD_NUMBER}"
+            	echo "DOCKERHUB_REPO=${DOCKERHUB_REPO}"
+            	echo "IMAGE_TAG=${IMAGE_TAG}"
+            	echo "APP_IMAGE=${APP_IMAGE}"
+        	'''
     }
 }
