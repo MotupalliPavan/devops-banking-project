@@ -52,16 +52,16 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh '''
-                        mvn sonar:sonar \
-                          -Dsonar.projectKey=digital-banking-system \
-                          -Dsonar.projectName=digital-banking-system
-                    '''
-                }
-            }
+    steps {
+        withSonarQubeEnv('SonarQube') {
+            sh '''
+                mvn org.sonarsource.scanner.maven:sonar-maven-plugin:5.7.0.6970:sonar \
+                  -Dsonar.projectKey=digital-banking-system \
+                  -Dsonar.projectName=digital-banking-system
+            '''
         }
+    }
+}
 
         stage('Quality Gate') {
             steps {
