@@ -1,13 +1,12 @@
 pipeline {
-
     agent any
 
     environment {
-    DOCKERHUB_REPO = "motupallipavan/digital-banking-cicd-app"
-    IMAGE_TAG = "${BUILD_NUMBER}"
-    APP_IMAGE = "motupallipavan/digital-banking-cicd-app:${BUILD_NUMBER}"
-    LAST_SUCCESS_FILE = "last-successful-image.txt"
-}
+        DOCKERHUB_REPO = 'motupallipavan/online-banking-cicd-app'
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        APP_IMAGE = "motupallipavan/online-banking-cicd-app:${BUILD_NUMBER}"
+    }
+
     options {
         timestamps()
         buildDiscarder(logRotator(numToKeepStr: '10'))
@@ -23,21 +22,33 @@ pipeline {
 
         stage('Verify Environment') {
             steps {
-                sh 'java -version'
-                sh 'mvn -version'
-                sh 'docker --version'
-                sh 'docker compose version'
+                sh '''
+                    echo "===== ONLINE BANKING CI/CD ====="
+                    echo "===== Environment ====="
+
+                    java -version
+                    mvn -version
+                    docker --version
+                    docker compose version
+
+                    echo "BUILD_NUMBER=${BUILD_NUMBER}"
+                    echo "DOCKERHUB_REPO=${DOCKERHUB_REPO}"
+                    echo "IMAGE_TAG=${IMAGE_TAG}"
+                    echo "APP_IMAGE=${APP_IMAGE}"
+                '''
             }
         }
 
         stage('Compile') {
             steps {
+                echo 'Compiling Online Banking application...'
                 sh 'mvn clean compile'
             }
         }
 
         stage('Test') {
             steps {
+                echo 'Running Online Banking tests...'
                 sh 'mvn test'
             }
 
@@ -52,20 +63,22 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-    steps {
-        withSonarQubeEnv('SonarQube') {
-            sh '''
-                mvn org.sonarsource.scanner.maven:sonar-maven-plugin:5.7.0.6970:sonar \
-                  -Dsonar.projectKey=digital-banking-system \
-                  -Dsonar.projectName=digital-banking-system
-            '''
+            steps {
+                echo 'Running SonarQube analysis...'
+
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                        mvn org.sonarsource.scanner.maven:sonar-maven-plugin:5.7.0.6970:sonar
+                    '''
+                }
+            }
         }
-    }
-}
 
         stage('Quality Gate') {
             steps {
-                timeout(time: 10, unit: 'MINUTES') {
+                echo 'Waiting for SonarQube Quality Gate...'
+
+                timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
@@ -73,121 +86,165 @@ pipeline {
 
         stage('Package') {
             steps {
+                echo 'Packaging Online Banking application...'
+
                 sh 'mvn package -DskipTests'
             }
         }
 
         stage('Docker Build') {
-    steps {
-        sh '''
-            echo "Building Docker image: ${APP_IMAGE}"
-
-            docker build -t ${APP_IMAGE} .
-        '''
-    }
-}
-	stage('Docker Push') {
-    steps {
-        withCredentials([
-            usernamePassword(
-                credentialsId: 'dockerhub-credentials',
-                usernameVariable: 'DOCKER_USERNAME',
-                passwordVariable: 'DOCKER_PASSWORD'
-            )
-       ]) {
-            sh '''
-                echo "$DOCKER_PASSWORD" | docker login \
-                    -u "$DOCKER_USERNAME" \
-                    --password-stdin
-
-                echo "Pushing Docker image: ${APP_IMAGE}"
-
-                docker push ${APP_IMAGE}
-            '''
-        }
-    }
-}
-	stage('Deploy') {
-	steps {
-        sh '''
-            echo "Stopping existing deployment..."
-
-            docker compose down --remove-orphans || true
-
-            echo "Pulling image: ${APP_IMAGE}"
-
-            IMAGE_TAG=${IMAGE_TAG} docker compose pull app
-
-            echo "Starting application..."
-
-            IMAGE_TAG=${IMAGE_TAG} docker compose up -d
-        '''
-    }
-}
- 	stage('Health Check') {
-   	 steps {
-        	sh '''
-            	echo "Waiting for application to become healthy..."
-
-            for i in $(seq 1 30); do
-
-                STATUS=$(docker inspect \
-                    --format='{{.State.Health.Status}}' \
-                    digital-banking-app 2>/dev/null || echo "starting")
-
-                echo "Application health: $STATUS"
-
-                if [ "$STATUS" = "healthy" ]; then
-
-                    echo "Application is healthy!"
-
-                    curl --fail --silent --show-error \
-                        http://localhost:8081/login > /dev/null
-
-                    exit 0
-                fi
-
-                if [ "$STATUS" = "unhealthy" ]; then
-                    echo "Application became unhealthy."
-                    docker compose logs app
-                    exit 1
-                fi
-
-                sleep 5
-            done
-
-            echo "Application did not become healthy within 150 seconds."
-
-            docker compose logs app
-
-            exit 1
-        '''
-    }
-}
-	stage('Record Successful Deployment') {
-    steps {
-        script {
-            writeFile(
-                file: env.LAST_SUCCESS_FILE,
-                text: env.IMAGE_TAG
-            )
-
-            archiveArtifacts(
-                artifacts: env.LAST_SUCCESS_FILE,
-                fingerprint: true
-            )
-
-            echo "Successfully deployed image: ${env.APP_IMAGE}"
-        }
-    }
-}
-	stage('Docker Cleanup') {
             steps {
-                sh '''
-                    echo "Cleaning unused Docker resources..."
+                echo 'Building Online Banking Docker image...'
 
-                    docker image prune -f
-                    docker container prune -f
+                sh '''
+                    echo "===== Docker Build ====="
+                    echo "Building image: ${APP_IMAGE}"
+
+                    docker build \
+                        -t ${APP_IMAGE} \
+                        .
+
+                    echo "Docker image built successfully."
+
+                    docker images | grep online-banking-cicd-app || true
+                '''
+            }
+        }
+
+        stage('Docker Tag') {
+            steps {
+                echo 'Creating Docker latest tag...'
+
+                sh '''
+                    echo "===== Docker Tag ====="
+
+                    docker tag \
+                        ${APP_IMAGE} \
+                        ${DOCKERHUB_REPO}:latest
+
+                    echo "Docker tags created successfully."
+
+                    docker images | grep online-banking-cicd-app || true
+                '''
+            }
+        }
+
+        stage('Docker Hub Push') {
+            steps {
+                echo 'Pushing Online Banking images to Docker Hub...'
+
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-credentials',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )
+                ]) {
+                    sh '''
+                        echo "===== Docker Hub Login ====="
+
+                        echo "$DOCKER_PASSWORD" | docker login \
+                            --username "$DOCKER_USERNAME" \
+                            --password-stdin
+
+                        echo "===== Pushing Versioned Image ====="
+
+                        docker push ${APP_IMAGE}
+
+                        echo "===== Pushing Latest Image ====="
+
+                        docker push ${DOCKERHUB_REPO}:latest
+
+                        echo "Docker images pushed successfully."
+
+                        docker logout
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo 'Deploying Online Banking application...'
+
+                sh '''
+                    echo "===== ONLINE BANKING DEPLOYMENT ====="
+
+                    echo "Stopping existing deployment..."
+
+                    docker compose down --remove-orphans || true
+
+                    echo "Pulling Online Banking image: ${IMAGE_TAG}"
+
+                    IMAGE_TAG=${IMAGE_TAG} docker compose pull app
+
+                    echo "Starting Online Banking application..."
+
+                    IMAGE_TAG=${IMAGE_TAG} docker compose up -d
+
+                    echo "Deployment started successfully."
+                '''
+            }
+        }
+
+        stage('Health Check') {
+            steps {
+                echo 'Checking Online Banking application health...'
+
+                sh '''
+                    echo "===== ONLINE BANKING HEALTH CHECK ====="
+
+                    echo "Waiting for application to become healthy..."
+
+                    for i in $(seq 1 30); do
+
+                        STATUS=$(docker inspect \
+                            --format='{{.State.Health.Status}}' \
+                            online-banking-app 2>/dev/null || echo "starting")
+
+                        echo "Attempt $i/30"
+                        echo "Application health: $STATUS"
+
+                        if [ "$STATUS" = "healthy" ]; then
+
+                            echo "Online Banking container is healthy."
+
+                            echo "Checking application endpoint..."
+
+                            curl --fail \
+                                 --silent \
+                                 --show-error \
+                                 http://localhost:8081/login \
+                                 > /dev/null
+
+                            echo "Online Banking application is responding."
+
+                            echo "===== HEALTH CHECK PASSED ====="
+
+                            exit 0
+                        fi
+
+                        if [ "$STATUS" = "unhealthy" ]; then
+
+                            echo "Online Banking application became unhealthy."
+
+                            echo "===== APPLICATION LOGS ====="
+
+                            docker compose logs --tail=100 app
+
+                            exit 1
+                        fi
+
+                        sleep 5
+                    done
+
+                    echo "Online Banking application did not become healthy within 150 seconds."
+
+                    echo "===== APPLICATION LOGS ====="
+
+                    docker compose logs --tail=100 app
+
+                    exit 1
                 '''
             }
         }
@@ -195,28 +252,24 @@ pipeline {
 
     post {
 
+        always {
+            sh '''
+                echo "===== ONLINE BANKING CONTAINERS ====="
+
+                docker compose ps || true
+
+                echo "===== ONLINE BANKING DOCKER IMAGES ====="
+
+                docker images | grep online-banking-cicd-app || true
+            '''
+        }
+
         success {
-            echo 'Banking application deployed successfully!'
+            echo 'Online Banking application deployed successfully and health check passed!'
         }
 
         failure {
-            echo 'Pipeline failed. Check the console output.'
-        }
-
-        always {
-            sh 'docker compose ps || true'
+            echo 'Online Banking pipeline failed. Check the console output.'
         }
     }
 }
-
-	stage('Verify Environment') {
-    		steps {
-        	sh '''
-            	echo "BUILD_NUMBER=${BUILD_NUMBER}"
-            	echo "DOCKERHUB_REPO=${DOCKERHUB_REPO}"
-            	echo "IMAGE_TAG=${IMAGE_TAG}"
-            	echo "APP_IMAGE=${APP_IMAGE}"
-        	'''
-    }
-}
-
